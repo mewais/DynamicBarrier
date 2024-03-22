@@ -1,24 +1,26 @@
-#ifndef __DYNAMICBARRIER_HPP__
-#define __DYNAMICBARRIER_HPP__
+#ifndef __DYNBAR_FLATDYNAMICBARRIER_HPP__
+#define __DYNBAR_FLATDYNAMICBARRIER_HPP__
 
 #include <cstdint>
 #include <atomic>
+#include <concepts>
 
 namespace DYNBAR
 {
-    class DynamicBarrier
+    template <std::unsigned_integral T>
+    class FlatDynamicBarrier
     {
         private:
-            struct alignas(8) Payload
+            struct alignas(2 * sizeof(T)) Payload
             {
-                uint32_t target;
-                uint32_t count;
+                T target;
+                T count;
 
                 Payload() : target(0), count(0)
                 {
                 }
 
-                Payload(uint32_t count, uint32_t target) : target(target), count(count)
+                Payload(T count, T target) : target(target), count(count)
                 {
                 }
             };
@@ -26,7 +28,7 @@ namespace DYNBAR
             std::atomic<Payload> payload;
 
         public:
-            DynamicBarrier() : payload(Payload(0, 0))
+            FlatDynamicBarrier() : payload(Payload(0, 0))
             {
             }
 
@@ -71,7 +73,7 @@ namespace DYNBAR
                 }
             }
 
-            uint32_t Arrive()
+            T Arrive()
             {
                 // Enter the barrier
                 Payload old_payload = this->payload.load();
@@ -106,4 +108,4 @@ namespace DYNBAR
     };
 }
 
-#endif //__DYNAMICBARRIER_HPP__
+#endif //__DYNBAR_FLATDYNAMICBARRIER_HPP__
