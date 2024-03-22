@@ -3,12 +3,12 @@
 #include <barrier>
 #include <string>
 
-#include "DynamicBarrier.hpp"
+#include "DynBar/FlatDynamicBarrier.hpp"
 
 #define THREAD_COUNT 4
 #define ITERATIONS 10000
 
-DYNBAR::DynamicBarrier barrier;
+DYNBAR::FlatDynamicBarrier<uint8_t> barrier;
 std::barrier std_barrier(THREAD_COUNT);
 
 void thread(uint32_t tid)
@@ -16,15 +16,15 @@ void thread(uint32_t tid)
     // The goal here is to test the basic barrier functionality, not the increment/decrement functionality.
     // So increment, then use std barrier to make sure everyone incremented before starting the test.
     barrier.IncrementTarget();
-    std::string str = "Thread " + std::to_string(tid) + " iteration ";
-    std::string str2;
+    std::string str;
     std_barrier.arrive_and_wait();
     for (int i = 0; i < ITERATIONS; i++)
     {
-        str2 = str + std::to_string(i) + "\n";
-        std::cout << str2;
-        barrier.Arrive();
+        uint8_t arrival = barrier.Arrive();
+        str = "Thread " + std::to_string(tid) + " iteration " + std::to_string(i) + " arrived " + std::to_string(arrival) + "\n";
+        std::cout << str;
     }
+    barrier.DecrementTarget();
 }
 
 int main()
