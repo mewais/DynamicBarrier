@@ -12,7 +12,7 @@
 #define LENGTH 5                // How long should a thread spen unbarriered
 
 
-DYNBAR::FlatDynamicBarrier<uint8_t> barrier;
+DYNBAR::FlatDynamicBarrier<uint8_t> barrier(THREAD_COUNT);
 
 void thread(uint32_t tid)
 {
@@ -20,14 +20,14 @@ void thread(uint32_t tid)
     bool use_barrier = true;
     uint32_t length = 0;
     std::string str;
-    barrier.IncrementTarget();
+    barrier.OptIn();
     for (int i = 0; i < ITERATIONS; i++)
     {
         if (use_barrier)
         {
             if ((rand() % FREQUENCY) == 0)
             {
-                barrier.DecrementTarget();
+                barrier.OptOut();
                 use_barrier = false;
                 length = LENGTH;
                 str = "Thread " + std::to_string(tid) + " iteration " + std::to_string(i) + " did not use barrier\n";
@@ -43,7 +43,7 @@ void thread(uint32_t tid)
             length--;
             if (length == 0)
             {
-                barrier.IncrementTarget();
+                barrier.OptIn();
                 use_barrier = true;
             }
             str = "Thread " + std::to_string(tid) + " iteration " + std::to_string(i) + " did not use barrier\n";
@@ -52,7 +52,7 @@ void thread(uint32_t tid)
     }
     if (use_barrier)
     {
-        barrier.DecrementTarget();
+        barrier.OptOut();
     }
 }
 
