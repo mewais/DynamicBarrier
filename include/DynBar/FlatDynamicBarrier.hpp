@@ -57,27 +57,37 @@ namespace DYNBAR
 
             void DecrementTarget()
             {
-                // To avoid deadlocks, decrementing a target can happen at any time, as long as count is less than target.
+                // To avoid deadlocks, decrementing a target can happen at any time the state is ENTERING, as long as
+                // count is less than target.
                 // To elaborate on deadlocks, imaging the following scenario:
                 // 1. Thread 1 enters.
                 // 2. Thread 2 tries to decrement, has to wait for all to exit barrier.
                 // 3. Thread 1 will never exit barrier because it is waiting for thread 2 to enter.
                 // 4. Deadlock.
                 Payload old_payload = this->payload.load();
-                while (old_payload.count == old_payload.target)
+                while (old_payload.count == old_payload.target || old_payload.state == State::EXITING)
                 {
                     old_payload = this->payload.load();
                 }
                 Payload new_payload = old_payload;
                 new_payload.target--;
+                // If after decrementing, count is equal to target, set state to EXITING.
+                if (new_payload.count == new_payload.target && new_payload.target != 0)
+                {
+                    new_payload.state = State::EXITING;
+                }
                 while (!this->payload.compare_exchange_weak(old_payload, new_payload))
                 {
-                    while (old_payload.count == old_payload.target)
+                    while (old_payload.count == old_payload.target || old_payload.state == State::EXITING)
                     {
                         old_payload = this->payload.load();
                     }
                     new_payload = old_payload;
                     new_payload.target--;
+                    if (new_payload.count == new_payload.target && new_payload.target != 0)
+                    {
+                        new_payload.state = State::EXITING;
+                    }
                 }
             }
 
