@@ -38,6 +38,10 @@ namespace DYNBAR
             {
             }
 
+            FlatDynamicBarrier(T target) : payload(Payload(0, target))
+            {
+            }
+
             void IncrementTarget()
             {
                 // Can only increment the target if the barrier is NOT in use (i.e., count == 0 and state is ENTERING).
