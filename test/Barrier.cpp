@@ -5,7 +5,7 @@
 
 #include "DynBar/FlatDynamicBarrier.hpp"
 
-#define THREAD_COUNT 4
+#define THREAD_COUNT 16
 #define ITERATIONS 10000
 
 DYNBAR::FlatDynamicBarrier<uint8_t> barrier;

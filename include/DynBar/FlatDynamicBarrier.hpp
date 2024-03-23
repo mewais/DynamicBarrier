@@ -11,16 +11,22 @@ namespace DYNBAR
     class FlatDynamicBarrier
     {
         private:
+            enum class State : uint8_t
+            {
+                ENTERING = 0,
+                EXITING = 1,
+            };
             struct alignas(2 * sizeof(T)) Payload
             {
-                T target;
-                T count;
+                State state : 1;
+                T target : sizeof(T) * 8 - 1;
+                T count : sizeof(T) * 8;
 
-                Payload() : target(0), count(0)
+                Payload() : state(State::ENTERING), target(0), count(0)
                 {
                 }
 
-                Payload(T count, T target) : target(target), count(count)
+                Payload(T count, T target) : state(State::ENTERING), target(target), count(count)
                 {
                 }
             };
@@ -34,14 +40,16 @@ namespace DYNBAR
 
             void IncrementTarget()
             {
-                // Can only increment the target if the barrier is NOT in use (i.e., count == 0).
+                // Can only increment the target if the barrier is NOT in use (i.e., count == 0 and state is ENTERING).
                 Payload old_payload = this->payload.load();
                 old_payload.count = 0;
+                old_payload.state = State::ENTERING;
                 Payload new_payload = old_payload;
                 new_payload.target++;
                 while (!this->payload.compare_exchange_weak(old_payload, new_payload))
                 {
                     old_payload.count = 0;
+                    old_payload.state = State::ENTERING;
                     new_payload = old_payload;
                     new_payload.target++;
                 }
@@ -75,35 +83,48 @@ namespace DYNBAR
 
             T Arrive()
             {
-                // Enter the barrier
+                // Enter the barrier, barrier must be in ENTERING state.
                 Payload old_payload = this->payload.load();
+                old_payload.state = State::ENTERING;
                 Payload new_payload = old_payload;
                 new_payload.count++;
+                // If we are last to enter, set state to EXITING.
+                if (new_payload.count == new_payload.target)
+                {
+                    new_payload.state = State::EXITING;
+                }
+                while (!this->payload.compare_exchange_weak(old_payload, new_payload))
+                {
+                    old_payload.state = State::ENTERING;
+                    new_payload = old_payload;
+                    new_payload.count++;
+                    if (new_payload.count == new_payload.target)
+                    {
+                        new_payload.state = State::EXITING;
+                    }
+                }
+                T order = old_payload.count;
+                // Wait for all threads to enter (state becomes EXITING).
+                while (this->payload.load().state == State::ENTERING);
+                // Then decrement the count.
+                old_payload = this->payload.load();
+                new_payload = old_payload;
+                new_payload.count--;
+                // If we are last to exit, set state to ENTERING.
+                if (new_payload.count == 0)
+                {
+                    new_payload.state = State::ENTERING;
+                }
                 while (!this->payload.compare_exchange_weak(old_payload, new_payload))
                 {
                     new_payload = old_payload;
-                    new_payload.count++;
-                }
-                if (old_payload.count == 0)
-                {
-                    // First one to enter, wait for target to be reached then reset count.
-                    old_payload.count = old_payload.target;
-                    new_payload.count = 0;
-                    while (!this->payload.compare_exchange_weak(old_payload, new_payload))
+                    new_payload.count--;
+                    if (new_payload.count == 0)
                     {
-                        old_payload.count = old_payload.target;
-                        new_payload.target = old_payload.target;
-                        new_payload.count = 0;
+                        new_payload.state = State::ENTERING;
                     }
-                    return 0;
                 }
-                else
-                {
-                    // Not the first one to enter, wait for count to be reset.
-                    while (this->payload.load().count != 0);
-                    // Return order of entry.
-                    return old_payload.count;
-                }
+                return order;
             }
     };
 }
