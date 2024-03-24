@@ -34,8 +34,8 @@ void thread(uint32_t tid)
             }
             else
             {
-                uint8_t arrival = barrier.Arrive();
-                str = "Thread " + std::to_string(tid) + " iteration " + std::to_string(i) + " arrived " + std::to_string(arrival) + "\n";
+                barrier.Arrive();
+                str = "Thread " + std::to_string(tid) + " iteration " + std::to_string(i) + "\n";
             }
         }
         else

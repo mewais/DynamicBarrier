@@ -97,7 +97,7 @@ namespace DYNBAR
                 }
             }
 
-            T Arrive()
+            void Arrive()
             {
                 // Enter the barrier, barrier must be in ENTERING state.
                 Payload old_payload = this->payload.load();
@@ -119,7 +119,6 @@ namespace DYNBAR
                         new_payload.state = State::EXITING;
                     }
                 }
-                T order = old_payload.waiting;
                 // Wait for all threads to enter (state becomes EXITING).
                 while (this->payload.load().state == State::ENTERING);
                 // Then decrement the waiting.
@@ -140,7 +139,6 @@ namespace DYNBAR
                         new_payload.state = State::ENTERING;
                     }
                 }
-                return order;
             }
 
             T GetMaxThreads() const
