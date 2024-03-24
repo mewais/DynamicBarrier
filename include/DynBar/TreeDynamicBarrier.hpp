@@ -14,14 +14,13 @@ namespace DYNBAR
             enum class State : uint8_t
             {
                 ENTERING = 0,
-                WAITING = 1,
-                EXITING = 2,
+                EXITING = 1,
             };
             struct Payload
             {
-                State state : 2;
+                State state : 1;
                 uint8_t threads : 3;
-                uint8_t waiting : 3;
+                uint8_t waiting : 4;
 
                 Payload() : state(State::ENTERING), threads(0), waiting(0)
                 {
@@ -71,27 +70,25 @@ namespace DYNBAR
 
             ~TreeDynamicBarrier()
             {
-                for (uint32_t i = 0; i < this->max_threads; i++)
+                for (int32_t i = this->tree_depth - 1; i >= 0; i--)
                 {
                     delete[] this->payload_tree[i];
                 }
                 delete[] this->payload_tree;
             }
 
-            uint32_t Arrive(uint32_t tid)
+            void Arrive(uint32_t tid)
             {
                 // We know the thread id, so we directly know the leaf node we should barrier at
                 uint32_t node = tid >> this->shift_amount;
                 uint32_t level = this->tree_depth - 1;
                 // From here, we can loop going up doing the following at every level:
                 // 1. Enter the barrier, barrier must be in ENTERING state.
-                // 2. If we are NOT the last to enter, wait for all threads to enter (state becomes WAITING).
-                // 3. If we are the last to enter, set state to WAITING.
-                // 4. If we are NOT the last to enter, wait for state to become EXITING.
-                // 5. If we are the last to enter, traverse up the tree and repeat.
-                // 6. If we are at the root level, and this is NOT the last thread to enter, wait for state to change from WAITING to EXITING.
-                // 7. If we are at the root level, and this is the last thread to enter, set state to EXITING.
-                // 8. Traverse down the tree, setting state to EXITING at every level.
+                // 2. If we are NOT the last to enter, wait for state to become EXITING.
+                // 3. If we are the last to enter, traverse up the tree and repeat.
+                // 4. If we are at the root level, and this is NOT the last thread to enter, wait for state to change to EXITING.
+                // 5. If we are at the root level, and this is the last thread to enter, set state to EXITING.
+                // 6. Traverse down the tree, setting state to EXITING at every level.
 
                 // Create lambda function for every level
                 std::function<void(uint32_t, uint32_t)> LevelFunc;
@@ -102,26 +99,17 @@ namespace DYNBAR
                     old_payload.state = State::ENTERING;
                     Payload new_payload = old_payload;
                     new_payload.waiting++;
-                    // Step 3
-                    if (new_payload.waiting == new_payload.threads)
-                    {
-                        new_payload.state = State::WAITING;
-                    }
                     while (!this->payload_tree[level][node].compare_exchange_weak(old_payload, new_payload))
                     {
                         old_payload.state = State::ENTERING;
                         new_payload = old_payload;
                         new_payload.waiting++;
-                        if (new_payload.waiting == new_payload.threads)
-                        {
-                            new_payload.state = State::WAITING;
-                        }
                     }
                     if (new_payload.waiting != new_payload.threads)
                     {
-                        // Step 2 merged into 4 (also, step 6)
+                        // Step 2 and 4 together
                         while (this->payload_tree[level][node].load().state != State::EXITING);
-                        // Step 8
+                        // Step 6
                         old_payload = this->payload_tree[level][node].load();
                         new_payload = old_payload;
                         new_payload.waiting--;
@@ -144,10 +132,10 @@ namespace DYNBAR
                     {
                         if (level != 0)
                         {
-                            // Step 5, recursively call this
+                            // Step 3, recursively call this
                             LevelFunc(level - 1, node >> this->shift_amount);
                         }
-                        // Step 8 and 7
+                        // Step 6 and 5
                         old_payload = this->payload_tree[level][node].load();
                         new_payload = old_payload;
                         new_payload.state = State::EXITING;
