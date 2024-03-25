@@ -1,6 +1,5 @@
 #include <iostream>
 #include <thread>
-#include <barrier>
 #include <string>
 
 #include "DynBar/FlatDynamicBarrier.hpp"
