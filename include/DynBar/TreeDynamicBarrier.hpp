@@ -49,6 +49,11 @@ namespace DYNBAR
                 {
                     throw std::invalid_argument("Node size must be a power of 2");
                 }
+                // Until we template the payload, we need to make sure the node size is not too big
+                if (node_size > 8)
+                {
+                    throw std::invalid_argument("Node size must be less than or equal to 8");
+                }
                 // Allocate the tree
                 this->payload_tree = new std::atomic<Payload>*[this->tree_depth];
                 // Find how many nodes are in every level of the tree and allocate them
@@ -77,6 +82,16 @@ namespace DYNBAR
                 delete[] this->payload_tree;
             }
 
+            void OptIn()
+            {
+                // TODO
+            }
+
+            void OptOut()
+            {
+                // TODO
+            }
+
             void Arrive(uint32_t tid)
             {
                 // We know the thread id, so we directly know the leaf node we should barrier at
@@ -94,12 +109,13 @@ namespace DYNBAR
                 std::function<void(uint32_t, uint32_t)> LevelFunc;
                 LevelFunc = [this, &LevelFunc](uint32_t level, uint32_t node) -> void
                 {
+                    std::atomic<Payload>& node_payload = this->payload_tree[level][node];
                     // Step 1
-                    Payload old_payload = this->payload_tree[level][node].load();
+                    Payload old_payload = node_payload.load();
                     old_payload.state = State::ENTERING;
                     Payload new_payload = old_payload;
                     new_payload.waiting++;
-                    while (!this->payload_tree[level][node].compare_exchange_weak(old_payload, new_payload))
+                    while (!node_payload.compare_exchange_weak(old_payload, new_payload))
                     {
                         old_payload.state = State::ENTERING;
                         new_payload = old_payload;
@@ -108,9 +124,9 @@ namespace DYNBAR
                     if (new_payload.waiting != new_payload.threads)
                     {
                         // Step 2 and 4 together
-                        while (this->payload_tree[level][node].load().state != State::EXITING);
+                        while (node_payload.load().state != State::EXITING);
                         // Step 6
-                        old_payload = this->payload_tree[level][node].load();
+                        old_payload = node_payload.load();
                         new_payload = old_payload;
                         new_payload.waiting--;
                         // If we are last to exit, set state to ENTERING.
@@ -118,7 +134,7 @@ namespace DYNBAR
                         {
                             new_payload.state = State::ENTERING;
                         }
-                        while (!this->payload_tree[level][node].compare_exchange_weak(old_payload, new_payload))
+                        while (!node_payload.compare_exchange_weak(old_payload, new_payload))
                         {
                             new_payload = old_payload;
                             new_payload.waiting--;
@@ -136,13 +152,13 @@ namespace DYNBAR
                             LevelFunc(level - 1, node >> this->shift_amount);
                         }
                         // Step 6 and 5
-                        old_payload = this->payload_tree[level][node].load();
+                        old_payload = node_payload.load();
                         new_payload = old_payload;
                         new_payload.state = State::EXITING;
                         new_payload.waiting--;
-                        while (!this->payload_tree[level][node].compare_exchange_weak(old_payload, new_payload))
+                        while (!node_payload.compare_exchange_weak(old_payload, new_payload))
                         {
-                            old_payload = this->payload_tree[level][node].load();
+                            old_payload = node_payload.load();
                             new_payload = old_payload;
                             new_payload.state = State::EXITING;
                             new_payload.waiting--;
