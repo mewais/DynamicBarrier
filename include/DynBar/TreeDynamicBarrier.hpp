@@ -96,7 +96,7 @@ namespace DYNBAR
             {
                 // We know the thread id, so we directly know the leaf node we should barrier at
                 uint32_t node = tid >> this->shift_amount;
-                uint32_t level = this->tree_depth - 1;
+                int32_t level = this->tree_depth - 1;
                 // From here, we can loop going up doing the following at every level:
                 // 1. Enter the barrier, barrier must be in ENTERING state.
                 // 2. If we are NOT the last to enter, wait for state to become EXITING.
@@ -105,9 +105,7 @@ namespace DYNBAR
                 // 5. If we are at the root level, and this is the last thread to enter, set state to EXITING.
                 // 6. Traverse down the tree, setting state to EXITING at every level.
 
-                // Create lambda function for every level
-                std::function<void(uint32_t, uint32_t)> LevelFunc;
-                LevelFunc = [this, &LevelFunc](uint32_t level, uint32_t node) -> void
+                while (level >= 0)
                 {
                     std::atomic<Payload>& node_payload = this->payload_tree[level][node];
                     // Step 1
@@ -121,11 +119,11 @@ namespace DYNBAR
                         new_payload = old_payload;
                         new_payload.waiting++;
                     }
+
                     if (new_payload.waiting != new_payload.threads)
                     {
-                        // Step 2 and 4 together
+                        // Step 2 and 4
                         while (node_payload.load().state != State::EXITING);
-                        // Step 6
                         old_payload = node_payload.load();
                         new_payload = old_payload;
                         new_payload.waiting--;
@@ -143,31 +141,60 @@ namespace DYNBAR
                                 new_payload.state = State::ENTERING;
                             }
                         }
+                        break;
                     }
                     else
                     {
-                        if (level != 0)
+                        if (level == 0)
                         {
-                            // Step 3, recursively call this
-                            LevelFunc(level - 1, node >> this->shift_amount);
-                        }
-                        // Step 6 and 5
-                        old_payload = node_payload.load();
-                        new_payload = old_payload;
-                        new_payload.state = State::EXITING;
-                        new_payload.waiting--;
-                        while (!node_payload.compare_exchange_weak(old_payload, new_payload))
-                        {
+                            // Step 5
                             old_payload = node_payload.load();
                             new_payload = old_payload;
                             new_payload.state = State::EXITING;
                             new_payload.waiting--;
+                            while (!node_payload.compare_exchange_weak(old_payload, new_payload))
+                            {
+                                new_payload = old_payload;
+                                new_payload.state = State::EXITING;
+                                new_payload.waiting--;
+                            }
+                            break;
+                        }
+                        else
+                        {
+                            // Step 3
+                            level--;
+                            node >>= this->shift_amount;
                         }
                     }
-                };
+                }
 
-                // Use it
-                LevelFunc(level, node);
+                // Step 6
+                while (level < (int32_t)this->tree_depth - 1)
+                {
+                    level++;
+                    node = tid >> (this->shift_amount * (this->tree_depth - level));
+                    std::atomic<Payload>& node_payload = this->payload_tree[level][node];
+                    Payload old_payload = node_payload.load();
+                    Payload new_payload = old_payload;
+                    new_payload.state = State::EXITING;
+                    new_payload.waiting--;
+                    // If we are last to exit, set state to ENTERING.
+                    if (new_payload.waiting == 0)
+                    {
+                        new_payload.state = State::ENTERING;
+                    }
+                    while (!node_payload.compare_exchange_weak(old_payload, new_payload))
+                    {
+                        new_payload = old_payload;
+                        new_payload.state = State::EXITING;
+                        new_payload.waiting--;
+                        if (new_payload.waiting == 0)
+                        {
+                            new_payload.state = State::ENTERING;
+                        }
+                    }
+                }
             }
     };
 }
