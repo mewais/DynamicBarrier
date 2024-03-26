@@ -7,7 +7,7 @@
 #define THREAD_COUNT 16
 #define ITERATIONS 10000
 
-DYNBAR::TreeDynamicBarrier barrier(THREAD_COUNT, 4);
+DYNBAR::TreeDynamicBarrier barrier(THREAD_COUNT, THREAD_COUNT, 4);
 
 void thread(uint32_t tid)
 {
