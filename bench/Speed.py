@@ -73,7 +73,7 @@ def PlotResults(results):
     pio.write_image(fig, "Speed.png", height=1080, width=1920)
 
 if __name__ == "__main__":
-    programs = ["FlatBarrier", "TreeBarrier"]
+    programs = ["PThreadBarrier", "FlatBarrier", "TreeBarrier"]
     threads = [2**i for i in range(4, 7)]  # Powers of 2 from 2 to 64
     iterations_cycle = [i for i in range(1, 10)]
     iterations = []
