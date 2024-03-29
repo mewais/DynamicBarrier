@@ -6,3 +6,4 @@ cmake-build-debug/
 cmake-build-release/
 .ccls-cache/
 compile_commands.json
+**/__pycache__

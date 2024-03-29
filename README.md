@@ -1,5 +1,5 @@
 # Dynamic Barrier
-This is no regular barrier. This is a dynamic barrier that allows threads to opt in/out of the barrier at runtime. The barrier is implemented (almost) purely using atomics.
+This is no regular barrier. This is a dynamic barrier that allows threads to opt in/out of the barrier at runtime. The barrier is implemented (almost) purely using atomics. It is also faster than pthreads barriers by more than 60%.
 
 ## Barrier Types
 - `FlatDynamicBarrier`: This is your typical barrier where all threads must reach the barrier before any thread can proceed. This barrier is templated to allow you to use any number of threads (I don't know if there any speed benefits of using atomics on smaller ints, but I did it anyway). The allowed sizes are:
@@ -12,6 +12,20 @@ this requires a logical tid to be passed to each of its functions. This is curre
   - 4 threads per node
 
 ## Usage
+The library is header only. If you want, you can simply stick it in your project. Otherwise, you can install it through your CMake as follows:
+```cmake
+include(ExternalProject)
+set(EXTERNAL_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/external)
+ExternalProject_Add(
+    DynamicBarrier
+    GIT_REPOSITORY https://github.com/mewais/DynamicBarrier.git
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_LOCATION}
+)
+
+target_include_directories(${PROJECT_NAME} PUBLIC ${EXTERNAL_INSTALL_LOCATION}/include)
+```
+
+The API is quiet simple:
 ```cpp
 #include "DynBar/FlatDynamicBarrier.hpp"
 #include "DynBar/TreeDynamicBarrier.hpp"
