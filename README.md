@@ -30,7 +30,8 @@ barrier.Arrive(tid); // Wait for all threads to reach the barrier
 ```
 
 ## Performance Comparison
-TODO
+The tree barrier outperforms the flat barrier when using a large number of threads. The differences become more noticeable the more they are used. Here's a preliminary comparison:
+![image](bench/Speed.png)
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
