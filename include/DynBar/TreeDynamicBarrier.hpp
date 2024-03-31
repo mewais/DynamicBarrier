@@ -36,6 +36,7 @@ namespace DYNBAR
             const uint32_t node_size;
             const uint32_t tree_depth;
             const uint32_t shift_amount;            // The shift amount for the node size
+            uint32_t leaf_nodes;
 
             std::mutex opt_in_mutex;
 
@@ -67,6 +68,7 @@ namespace DYNBAR
                     {
                         nodes *= node_size;
                     }
+                    this->leaf_nodes = nodes;           // Will keep getting updated until the last level
                     this->payload_tree[i] = new std::atomic<Payload>[nodes];
                     // Initialize every node in the level
                     for (uint32_t j = 0; j < nodes; j++)
@@ -334,6 +336,38 @@ namespace DYNBAR
                         }
                     }
                 }
+            }
+
+            uint32_t GetMaxThreads() const
+            {
+                return this->max_threads;
+            }
+
+            uint32_t GetNodeSize() const
+            {
+                return this->node_size;
+            }
+
+            uint32_t GetOptedInThreads() const
+            {
+                // Total number of threads of every node in the leafs
+                uint32_t total_threads = 0;
+                for (uint32_t i = 0; i < this->leaf_nodes; i++)
+                {
+                    total_threads += this->payload_tree[this->tree_depth - 1][i].load().threads;
+                }
+                return total_threads;
+            }
+
+            uint32_t GetWaitingThreads() const
+            {
+                // Total number of waiting threads of every node in the leafs
+                uint32_t total_threads = 0;
+                for (uint32_t i = 0; i < this->leaf_nodes; i++)
+                {
+                    total_threads += this->payload_tree[this->tree_depth - 1][i].load().waiting;
+                }
+                return total_threads;
             }
     };
 }
