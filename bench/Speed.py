@@ -6,6 +6,8 @@ import plotly.io as pio
 
 def RunSpeedTest(program, threads, iterations):
     print(f"Running test {program} with {threads} threads and {iterations} iterations")
+    if "Multi" in program:
+        iterations /= 2
     command = f"/usr/bin/time -f '%e' ../build/{program} {threads} {iterations}"
     output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
     output = output.decode("utf-8")
@@ -73,7 +75,7 @@ def PlotResults(results):
     pio.write_image(fig, "Speed.png", height=1080, width=1920)
 
 if __name__ == "__main__":
-    programs = ["PThreadBarrier", "FlatBarrier", "TreeBarrier"]
+    programs = ["PThreadBarrier", "FlatBarrier", "TreeBarrier", "FlatMultiBarrier", "TreeMultiBarrier"]
     threads = [2**i for i in range(4, 7)]  # Powers of 2 from 2 to 64
     iterations_cycle = [i for i in range(1, 10)]
     iterations = []
