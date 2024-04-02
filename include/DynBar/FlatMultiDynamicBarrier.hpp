@@ -37,12 +37,12 @@ namespace DYNBAR
             std::atomic<Payload> payload;
 
         public:
-            explicit FlatMultiDynamicBarrier(T max_threads, uint8_t max_barriers) : max_threads(max_threads),
+            explicit FlatMultiDynamicBarrier(uint8_t max_barriers, T max_threads) : max_threads(max_threads),
                                max_barriers(max_barriers), payload()
             {
             }
 
-            FlatMultiDynamicBarrier(T max_threads, uint8_t max_barriers, T opted_in_threads) : max_threads(max_threads),
+            FlatMultiDynamicBarrier(uint8_t max_barriers, T max_threads, T opted_in_threads) : max_threads(max_threads),
                                max_barriers(max_barriers), payload(Payload(0, 0, opted_in_threads))
             {
             }

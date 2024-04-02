@@ -47,7 +47,7 @@ namespace DYNBAR
             std::atomic<Payload>** payload_tree;
 
         public:
-            TreeMultiDynamicBarrier(uint32_t max_threads, uint32_t node_size, uint8_t max_barriers) :
+            TreeMultiDynamicBarrier(uint8_t max_barriers, uint32_t node_size, uint32_t max_threads) :
                                max_barriers(max_barriers), max_threads(max_threads), node_size(node_size),
                                tree_depth(std::log(max_threads + 1) / std::log(node_size)),
                                shift_amount(std::log2(node_size))
@@ -82,8 +82,8 @@ namespace DYNBAR
                 }
             }
 
-            TreeMultiDynamicBarrier(uint32_t max_threads, uint32_t opted_in_threads, uint32_t node_size,
-                                    uint8_t max_barriers) : max_barriers(max_barriers), max_threads(max_threads),
+            TreeMultiDynamicBarrier(uint8_t max_barriers, uint32_t node_size, uint32_t max_threads,
+                                    uint32_t opted_in_threads) : max_barriers(max_barriers), max_threads(max_threads),
                                     node_size(node_size), tree_depth(std::log(max_threads + 1) / std::log(node_size)),
                                     shift_amount(std::log2(node_size))
             {
@@ -107,6 +107,7 @@ namespace DYNBAR
                     {
                         nodes *= node_size;
                     }
+                    this->leaf_nodes = nodes;           // Will keep getting updated until the last level
                     this->payload_tree[i] = new std::atomic<Payload>[nodes];
                     // Initialize every node in the level
                     for (uint32_t j = 0; j < nodes; j++)

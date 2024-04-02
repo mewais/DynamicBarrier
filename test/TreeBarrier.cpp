@@ -34,7 +34,7 @@ int main(int argc, char** argv)
     thread_count = std::stoi(argv[1]);
     iterations = std::stoi(argv[2]);
 
-    barrier = new DYNBAR::TreeDynamicBarrier(thread_count, thread_count, 2);
+    barrier = new DYNBAR::TreeDynamicBarrier(2, thread_count, thread_count);
     std::vector<std::thread> threads;
     for (uint32_t i = 0; i < thread_count; i++)
     {
