@@ -10,6 +10,13 @@ This is no regular barrier. This is a dynamic barrier that allows threads to opt
 this requires a logical tid to be passed to each of its functions. This is currently not templated and only the following sizes are allowed:
   - 2 threads per node
   - 4 threads per node
+- `FlatMultiDynamicBarrier`: This is the same as `FlatDynamicBarrier` but allows for multiple barriers to be used at the same time. This is needed because if you have multiple separate `FlatDynamicBarrier`s and want to OptIn/Out of all of them, you are likely to encounter deadlocks. With a combined `FlatMultiDynamicBarrier`, you can avoid this by OptingIn/Out of all of them at the same time. The allowed sizes are:
+  - `uint8_t`: 0-16 threads
+  - `uint16_t`: 0-4096 threads
+  - `uint32_t`: 0-268435456 threads
+- `TreeMultiDynamicBarrier`: Similarly to the `FlatMultiDynamicBarrier`, this is the same as `TreeDynamicBarrier` but allows for multiple barriers to be used at the same time. The allowed sizes are:
+  - 2 threads per node
+  - 4 threads per node
 
 ## Usage
 The library is header only. If you want, you can simply stick it in your project. Otherwise, you can install it through your CMake as follows:
