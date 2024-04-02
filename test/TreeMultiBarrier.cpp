@@ -5,12 +5,12 @@
 #include <iostream>
 #endif // NDEBUG
 
-#include "DynBar/TreeDynamicBarrier.hpp"
+#include "DynBar/TreeMultiDynamicBarrier.hpp"
 
 uint32_t thread_count;
 uint32_t iterations;
 
-DYNBAR::TreeDynamicBarrier* barrier;
+DYNBAR::TreeMultiDynamicBarrier* barrier;
 
 void thread(uint32_t tid)
 {
@@ -21,9 +21,14 @@ void thread(uint32_t tid)
 #endif // NDEBUG
     for (uint32_t i = 0; i < iterations; i++)
     {
-        barrier->Arrive(tid);
+        barrier->Arrive(tid, 0);
 #ifndef NDEBUG
-        str = "Thread " + std::to_string(tid) + " iteration " + std::to_string(i) + "\n";
+        str = "Thread " + std::to_string(tid) + " iteration " + std::to_string(i) + " barrier 1\n";
+        std::cout << str;
+#endif // NDEBUG
+        barrier->Arrive(tid, 1);
+#ifndef NDEBUG
+        str = "Thread " + std::to_string(tid) + " iteration " + std::to_string(i) + " barrier 2\n";
         std::cout << str;
 #endif // NDEBUG
     }
@@ -34,7 +39,7 @@ int main(int argc, char** argv)
     thread_count = std::stoi(argv[1]);
     iterations = std::stoi(argv[2]);
 
-    barrier = new DYNBAR::TreeDynamicBarrier(thread_count, thread_count, 2);
+    barrier = new DYNBAR::TreeMultiDynamicBarrier(thread_count, thread_count, 2, 2);
     std::vector<std::thread> threads;
     for (uint32_t i = 0; i < thread_count; i++)
     {

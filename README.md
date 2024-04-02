@@ -48,6 +48,20 @@ TreeDynamicBarrier barrier(16, 4, 2); // 16 threads, first 4 opted in, a node si
 barrrier.OptIn(tid); // Opt in logical thread id tid
 barrier.OptOut(tid); // Opt out logical thread id tid
 barrier.Arrive(tid); // Wait for all threads to reach the barrier
+
+FlatMultiDynamicBarrier<uint8_t> barrier(4, 2); // 4 threads, 2 barriers
+FlatMultiDynamicBarrier<uint8_t> barrier(4, 2, 2); // 4 threads, 2 barriers, first 2 opted in
+barrrier.OptIn(); // Increment the target by 1
+barrier.OptOut(); // Decrement the target by 1
+barrier.Arrive(0); // Wait for all threads to reach the barrier
+barrier.Arrive(1); // Wait for all threads to reach the barrier
+
+TreeMultiDynamicBarrier barrier(16, 2, 2); // 16 threads, a node size of 2, 2 barriers
+TreeMultiDynamicBarrier barrier(16, 4, 2, 2); // 16 threads, first 4 opted in, a node size of 2, 2 barriers
+barrrier.OptIn(tid); // Opt in logical thread id tid
+barrier.OptOut(tid); // Opt out logical thread id tid
+barrier.Arrive(tid, 0); // Wait for all threads to reach the barrier
+barrier.Arrive(tid, 1); // Wait for all threads to reach the barrier
 ```
 
 ## Performance Comparison
