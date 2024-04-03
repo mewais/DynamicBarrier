@@ -16,12 +16,13 @@ namespace DYNBAR
             {
                 ENTERING = 0,
                 EXITING = 1,
+                STUCK = 2,
             };
             struct Payload
             {
-                State state : 1;
+                State state : 2;
                 uint8_t threads : 3;
-                uint8_t waiting : 4;
+                uint8_t waiting : 3;
 
                 Payload() : state(State::ENTERING), threads(0), waiting(0)
                 {
@@ -194,10 +195,19 @@ namespace DYNBAR
                     }
                     Payload new_payload = old_payload;
                     new_payload.threads--;
-                    // If after decrementing, waiting is equal to threads, set state to EXITING.
                     if (new_payload.waiting == new_payload.threads && new_payload.threads != 0)
                     {
-                        new_payload.state = State::EXITING;
+                        if (level == 0)
+                        {
+                            // If after decrementing the last level, waiting is equal to threads, set state to EXITING.
+                            new_payload.state = State::EXITING;
+                        }
+                        else
+                        {
+                            // However, if after decrementing other levels, waiting is equal to threads, the waiters
+                            // may be stuck since noone from the upper levels would return to them.
+                            new_payload.state = State::STUCK;
+                        }
                     }
                     while (!node_payload.compare_exchange_weak(old_payload, new_payload))
                     {
@@ -209,7 +219,17 @@ namespace DYNBAR
                         new_payload.threads--;
                         if (new_payload.waiting == new_payload.threads && new_payload.threads != 0)
                         {
-                            new_payload.state = State::EXITING;
+                            if (level == 0)
+                            {
+                                // If after decrementing the last level, waiting is equal to threads, set state to EXITING.
+                                new_payload.state = State::EXITING;
+                            }
+                            else
+                            {
+                                // However, if after decrementing other levels, waiting is equal to threads, the waiters
+                                // may be stuck since noone from the upper levels would return to them.
+                                new_payload.state = State::STUCK;
+                            }
                         }
                     }
                     // Decrement parent if needed
@@ -256,7 +276,32 @@ namespace DYNBAR
                     if (new_payload.waiting != new_payload.threads)
                     {
                         // Step 2 and 4
-                        while (node_payload.load().state != State::EXITING);
+                        while (true)
+                        {
+                            auto temp_payload = node_payload.load();
+                            if (temp_payload.state == State::ENTERING)
+                            {
+                                continue;
+                            }
+                            else if (temp_payload.state == State::EXITING)
+                            {
+                                break;
+                            }
+                            else
+                            {
+                                // State is STUCK. Pick one thread to continue to next levels, change state to entering
+                                if (temp_payload.waiting == temp_payload.threads)
+                                {
+                                    temp_payload.state = State::ENTERING;
+                                    node_payload.store(temp_payload);
+                                    goto correction;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+                        }
                         old_payload = node_payload.load();
                         new_payload = old_payload;
                         new_payload.waiting--;
@@ -278,6 +323,7 @@ namespace DYNBAR
                     }
                     else
                     {
+correction:
                         if (level == 0)
                         {
                             // Step 5

@@ -38,6 +38,7 @@ void thread(uint32_t tid)
                 length = LENGTH;
 #ifndef NDEBUG
                 str = "Thread " + std::to_string(tid) + " iteration " + std::to_string(i) + " did not use barrier\n";
+                std::cout << str;
 #endif // NDEBUG
             }
             else
@@ -45,10 +46,12 @@ void thread(uint32_t tid)
                 barrier->Arrive(0);
 #ifndef NDEBUG
                 str = "Thread " + std::to_string(tid) + " iteration " + std::to_string(i) + " barrier 1\n";
+                std::cout << str;
 #endif // NDEBUG
                 barrier->Arrive(1);
 #ifndef NDEBUG
                 str = "Thread " + std::to_string(tid) + " iteration " + std::to_string(i) + " barrier 2\n";
+                std::cout << str;
 #endif // NDEBUG
             }
         }
@@ -62,11 +65,9 @@ void thread(uint32_t tid)
             }
 #ifndef NDEBUG
             str = "Thread " + std::to_string(tid) + " iteration " + std::to_string(i) + " did not use barrier\n";
+            std::cout << str;
 #endif // NDEBUG
         }
-#ifndef NDEBUG
-        std::cout << str;
-#endif // NDEBUG
     }
     if (use_barrier)
     {
