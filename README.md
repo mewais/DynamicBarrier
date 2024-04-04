@@ -1,3 +1,5 @@
+[![FreePalestine.Dev](https://freepalestine.dev/header/1)](https://freepalestine.dev)
+
 # Dynamic Barrier
 This is no regular barrier. This is a dynamic barrier that allows threads to opt in/out of the barrier at runtime. The barrier is implemented (almost) purely using atomics. It is also faster than pthreads barriers by more than 60%.
 
